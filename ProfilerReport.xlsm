@@ -1,0 +1,196 @@
+Public Declare Sub Sleep Lib "kernel32" (ByVal dwMilliseconds As Long)
+
+Sub PreofileReportGenerator_Template()
+
+    Dim wb1 As Workbook
+    Dim wb2 As Workbook
+    Dim Sheet As Worksheet
+    Dim PasteStart As Range
+    
+    Set wb1 = ActiveWorkbook
+    
+    FileToOpen = Application.GetOpenFilename _
+    (Title:="Please select Endpoints Downloaded Report to Generate Profiler Report", _
+    FileFilter:="Report Files *.csv (*.csv),")
+    
+    Application.ScreenUpdating = False
+    
+    If FileToOpen = False Then
+        MsgBox "No File Specified.", vbExclamation, "ERROR"
+        Exit Sub
+    Else
+        Set wb2 = Workbooks.Open(Filename:=FileToOpen)
+        ThisWorkbook.Sheets("Endpoints").Activate
+        Application.Calculation = xlManual
+        Application.DisplayAlerts = False
+        Sheets("Endpoints").Range("A1:R5000").ClearContents
+        Application.DisplayAlerts = True
+        Set PasteStart = [Endpoints!A1]
+        For Each Sheet In wb2.Sheets
+            With Sheet.UsedRange
+                .Copy PasteStart
+                Set PasteStart = PasteStart.Offset(.Rows.Count)
+            End With
+        Next Sheet
+    
+    End If
+        wb2.Close
+        
+    Dim ws As Worksheet
+    For Each ws In Worksheets
+        If ws.Name = "ProfileChanged" Then
+            Application.DisplayAlerts = False
+            Sheets("ProfileChanged").Delete
+            Application.DisplayAlerts = True
+            End
+        End If
+    Next ws
+    
+    'If (Worksheets("ProfileChanged").Name <> "") Then
+    '    Worksheets("ProfileChanged").ListObjects("myTable1").Unlist
+    'End If
+    
+    
+    Dim ws2 As Worksheet
+    Set ws2 = ThisWorkbook.Sheets.Add(After:= _
+             ThisWorkbook.Sheets(ThisWorkbook.Sheets.Count))
+    ws2.Name = "ProfileChanged"
+    Dim colNames(0 To 7) As String
+    colNames(0) = "macaddr"
+    colNames(1) = "ip"
+    colNames(2) = "manufacturer"
+    colNames(3) = "host-Name"
+    colNames(4) = "os"
+    colNames(5) = "category"
+    colNames(6) = "previous_os"
+    colNames(7) = "previous_category"
+    
+    'Findout the Column Numbers
+    Dim ind As Long
+    i = 1
+    For ind = LBound(colNames) To UBound(colNames)
+        colNum = WorksheetFunction.Match(colNames(ind), ActiveWorkbook.Sheets("Endpoints").Range("1:1"), 0)
+        Worksheets("Endpoints").Columns(colNum).Copy Destination:=Worksheets("ProfileChanged").Columns(i)
+        i = i + 1
+    Next ind
+    
+    'Filter Profile Changed Devices
+    'Worksheets("Endpoints").Columns(2).Copy Destination:=Worksheets("ProfileChanged").Columns(1)
+    'Worksheets("Endpoints").Columns(3).Copy Destination:=Worksheets("ProfileChanged").Columns(2)
+    'Worksheets("Endpoints").Columns(12).Copy Destination:=Worksheets("ProfileChanged").Columns(3)
+    'Worksheets("Endpoints").Columns(23).Copy Destination:=Worksheets("ProfileChanged").Columns(4)
+    'Worksheets("Endpoints").Columns(16).Copy Destination:=Worksheets("ProfileChanged").Columns(5)
+    'Worksheets("Endpoints").Columns(13).Copy Destination:=Worksheets("ProfileChanged").Columns(6)
+    'Worksheets("Endpoints").Columns(11).Copy Destination:=Worksheets("ProfileChanged").Columns(7)
+    'Worksheets("Endpoints").Columns(19).Copy Destination:=Worksheets("ProfileChanged").Columns(8)
+    
+    Worksheets("ProfileChanged").ListObjects.Add(xlSrcRange, , , xlYes).Name = "myTable1"
+    
+    Worksheets("ProfileChanged").Activate
+    Worksheets("ProfileChanged").Cells(1, "A").Value = "Mac Address"
+    Worksheets("ProfileChanged").Cells(1, "B").Value = "IP Address"
+    Worksheets("ProfileChanged").Cells(1, "C").Value = "Manufacturer"
+    Worksheets("ProfileChanged").Cells(1, "D").Value = "Host Name"
+    Worksheets("ProfileChanged").Cells(1, "E").Value = "OS Name"
+    Worksheets("ProfileChanged").Cells(1, "F").Value = "Category"
+    Worksheets("ProfileChanged").Cells(1, "G").Value = "Prev OS"
+    Worksheets("ProfileChanged").Cells(1, "H").Value = "Prev Category"
+    Worksheets("ProfileChanged").Cells.Range("A1:H1").Font.Size = 8
+    Worksheets("ProfileChanged").Cells.Range("A1:H1").Font.Bold = True
+    Worksheets("ProfileChanged").Cells.Font.Size = 6
+    'Worksheets("ProfileChanged").Cells.Range("H").Font.Color = RGB(255, 0, 0)
+    
+    Worksheets("ProfileChanged").Rows.WrapText = True
+    Worksheets("ProfileChanged").Range("A1:H1").Columns.AutoFit
+    Worksheets("ProfileChanged").Range("A:H").Borders.LineStyle = xlContinuous
+    
+    Columns("H").Cells.Font.Color = RGB(255, 0, 0)
+    Columns("H").Cells.Font.Color = RGB(255, 0, 0)
+    Worksheets("ProfileChanged").Cells(1, "H").Font.Color = RGB(255, 255, 255)
+    
+    Columns("F").Cells.Font.Color = RGB(255, 0, 0)
+    Columns("F").Cells.Font.Color = RGB(255, 0, 0)
+    Worksheets("ProfileChanged").Cells(1, "F").Font.Color = RGB(255, 255, 255)
+    
+    ActiveSheet.UsedRange
+    
+    Application.Calculation = xlCalculationAutomatic
+    ThisWorkbook.Sheets("ProfileChanged").ExportAsFixedFormat Type:=xlTypePDF, Filename:= _
+        ThisWorkbook.Path & "\ProfilerReport.pdf", Quality:=xlQualityStandard, IncludeDocProperties:=True, _
+         IgnorePrintAreas:=True, OpenAfterPublish:=False
+    
+    'MsgBox "File saved to " & ThisWorkbook.Path & "\ProfilerReport.pdf", vbInformation
+    
+    ThisWorkbook.RefreshAll
+    Sleep (2000)
+    
+    Worksheets("Analytics").Activate
+    Cells(61, "B").Value = Cells(47, "B").Value
+    Cells(62, "B").Value = Cells(52, "B").Value
+    Cells(63, "B").Value = Cells(57, "B").Value
+    
+    Dim oPPTApp As PowerPoint.Application
+    Dim oPPTFile As PowerPoint.Presentation
+    Dim SlideNum As Integer
+    
+    Dim strPresPath As String, strExcelFilePath As String, strNewPresPath As String
+    strPresPath = ThisWorkbook.Path & "\Profiler Presales Assessment Report v1.pptx"
+    strNewPresPath = ThisWorkbook.Path & "\Profiler Presales Assessment Report v2.pptx"
+    
+    Worksheets("Print").Activate
+    ThisWorkbook.RefreshAll
+    Sleep (2000)
+    
+    i = 1
+    Set ws = Worksheets("Print")
+    For Each shp In ws.Shapes
+    
+        strShapename = "C" & i
+        ws.Shapes(shp.Name).Name = strShapename
+        'shpArray.Add (shp)
+        i = i + 1
+    
+    Next shp
+    
+    'Save to PPT
+    Set oPPTApp = CreateObject("PowerPoint.Application")
+    oPPTApp.Visible = msoTrue
+    Set oPPTFile = oPPTApp.Presentations.Open(strPresPath)
+    ws.Shapes(1).Copy
+    oPPTFile.Slides(6).Shapes.PasteSpecial ppPasteEnhancedMetafile
+    
+    ws.Shapes(2).Copy
+    oPPTFile.Slides(7).Shapes.PasteSpecial ppPasteEnhancedMetafile
+    
+    ws.Shapes(3).Copy
+    oPPTFile.Slides(8).Shapes.PasteSpecial ppPasteEnhancedMetafile
+    
+    ws.Shapes(4).Copy
+    oPPTFile.Slides(9).Shapes.PasteSpecial ppPasteEnhancedMetafile
+    
+    Worksheets("ProfileChanged").ListObjects("myTable1").Range.AutoFilter field:=7, Criteria1:="<>"
+    'Worksheets("ProfileChanged").ListObjects("myTable1").Range.AutoFilter field:=6, Criteria1:=Array("Smartphones/PDAs/Tablets", "Windows"), Operator:=xlFilterValues
+    Worksheets("ProfileChanged").ListObjects("myTable1").Range.AutoFilter field:=8, Criteria1:=Array("Smartphones/PDAs/Tablets", "Switches", "Other OS", "Internet of Things (IoT)"), Operator:=xlFilterValues
+    ActiveSheet.UsedRange
+    
+    Worksheets("ProfileChanged").Activate
+    ActiveSheet.UsedRange.Copy
+    
+    oPPTFile.Slides(10).Shapes.PasteSpecial ppPasteEnhancedMetafile
+    
+    oPPTFile.SaveAs strNewPresPath
+    oPPTFile.Close
+    oPPTApp.Quit
+    
+    Set oPPTFile = Nothing
+    Set oPPTApp = Nothing
+    
+    Application.DisplayAlerts = False
+    Sheets("ProfileChanged").Delete
+    Application.DisplayAlerts = True
+    
+    Worksheets("Generator").Activate
+    
+    MsgBox "Presentation Created to " & strNewPresPath, vbOKOnly + vbInformation
+
+End Sub
